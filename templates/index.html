@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Popup Pulse Seoul</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8f9fa; margin: 0; padding: 40px 0; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; }
+        h2 { font-size: 36px; font-weight: 700; color: #111; margin-bottom: 30px; text-transform: uppercase; letter-spacing: -1px; text-align: center; }
+        
+        .main-container { width: 1200px; display: flex; flex-direction: column; gap: 20px; margin: 0 auto; position: relative; }
+        
+        .top-nav { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border-radius: 12px; width: 100%; box-sizing: border-box; }
+        .nav-left input[type="date"] { border: 1px solid #ddd; padding: 10px 15px; font-family: 'Noto Sans KR'; font-size: 15px; outline: none; background: #fff; cursor: pointer; border-radius: 8px; }
+        .nav-center { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .tag-btn { padding: 8px 18px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 14px; cursor: pointer; transition: 0.2s; border-radius: 20px; }
+        .tag-btn.active, .tag-btn:hover { background: #111; color: #fff; border-color: #111; font-weight: 700; }
+        .nav-right button { padding: 10px 20px; background: #ff385c; color: white; border: none; font-size: 15px; font-weight: 700; cursor: pointer; border-radius: 8px; transition: 0.2s; }
+        .nav-right button:hover { background: #e03150; }
+        
+        .map-layout-wrapper { position: relative; width: 100%; }
+        
+        .map-section-wrapper { width: 100%; height: 600px; border-radius: 12px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.08); background: #fff; position: relative; }
+        .view-panel { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; transition: opacity 0.4s ease, visibility 0.4s; visibility: hidden; opacity: 0; z-index: 1; }
+        .view-panel.active { visibility: visible; opacity: 1; z-index: 2; pointer-events: auto; }
+        #map { width: 100%; height: 100%; background-color: #eee; }
+        #calendar-panel { padding: 20px; box-sizing: border-box; }
+        
+        /* 🔥 사이드 컨트롤 래퍼 추가 (버튼들을 그룹으로 묶어 배치) */
+        .side-controls-wrapper { position: absolute; top: 0; right: -110px; display: flex; flex-direction: column; gap: 15px; z-index: 10; width: 90px; }
+        .side-controls { background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .view-btn { width: 100%; padding: 15px 0; background: #fff; color: #777; border: none; border-bottom: 1px solid #eee; font-family: 'Noto Sans KR'; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; transition: 0.2s; }
+        .view-btn:last-child { border-bottom: none; }
+        .view-btn:hover { background: #f8f9fa; color: #333; }
+        .view-btn.active-view { background: #111; color: #fff; pointer-events: none; }
+        
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%; margin-top: 10px; }
+        .card { position: relative; width: 100%; padding-bottom: 100%; background-color: #111; cursor: pointer; overflow: hidden; transition: 0.4s ease; border-radius: 12px; }
+        .card:hover { transform: translateY(-8px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+        .card-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; transition: 0.5s ease; z-index: 0; }
+        .card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.9)); z-index: 1; pointer-events: none; }
+        .card-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 25px; box-sizing: border-box; z-index: 2; pointer-events: none; }
+        .card-name { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; line-height: 1.3; word-break: keep-all; }
+        .card-addr { font-size: 13px; color: #bbb; }
+        
+        .card-actions { position: absolute; top: 20px; right: 20px; z-index: 3; display: flex; gap: 15px; align-items: center; }
+        .action-btn { font-size: 26px; color: rgba(255,255,255,0.8); cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); transition: 0.2s; }
+        .like-btn.liked { color: #ff385c; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-content { background: white; width: 90%; max-width: 600px; max-height: 80vh; position: relative; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 16px; box-shadow: 0 25px 50px rgba(0,0,0,0.2); overflow-y: auto; }
+        .close-btn { position: absolute; top: 20px; right: 25px; font-size: 35px; cursor: pointer; color: #aaa; line-height: 1; }
+        .empty-state { grid-column: 1 / -1; text-align: center; padding: 60px; color: #777; font-size: 16px; background: #fff; border-radius: 12px; border: 1px dashed #ccc; width: 100%; box-sizing: border-box; }
+        
+        .wishlist-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; margin-bottom: 10px; }
+        .wishlist-info { display: flex; flex-direction: column; gap: 5px; }
+        .wishlist-title { font-weight: 700; font-size: 16px; color: #111; word-break: keep-all; }
+        .wishlist-date { font-size: 13px; color: #777; }
+        .wishlist-actions { display: flex; gap: 5px; }
+        .wishlist-actions button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s; }
+        .btn-detail { background: #111; color: white; }
+        .btn-detail:hover { background: #333; }
+        .btn-remove { background: #ffe3e8; color: #ff385c; }
+        .btn-remove:hover { background: #ffc4d0; }
+
+        /* 🔥 z-index 조정: 찜 창(9998) 위에 상세 창(9999)이 뜨도록 계층 분리 */
+        #wishlistModal { z-index: 9998; }
+        #detailModal { z-index: 9999; }
+    </style>
+    
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=fd474115e070b6ee7ecb4093184da7b0&libraries=services"></script>
+</head>
+<body>
+
+    <h2>Seoul Pop-up Archive</h2>
+    
+    <div class="main-container">
+        <div class="top-nav">
+            <div class="nav-left"><input type="date" id="datePicker"></div>
+            <div class="nav-center" id="categoryBox">
+                <button class="tag-btn active" data-cat="전체">전체보기</button>
+                <button class="tag-btn" data-cat="패션">패션</button>
+                <button class="tag-btn" data-cat="뷰티">뷰티</button>
+                <button class="tag-btn" data-cat="캐릭터">캐릭터</button>
+                <button class="tag-btn" data-cat="푸드">푸드</button>
+                <button class="tag-btn" data-cat="라이프">라이프</button>
+            </div>
+            <div class="nav-right"><button id="openWishlistBtn">❤️ 찜한 pop-up (<span id="wishCount">0</span>)</button></div>
+        </div>
+
+        <div class="map-layout-wrapper">
+            <div class="map-section-wrapper">
+                <div id="map-panel" class="view-panel active"><div id="map"></div></div>
+                <div id="calendar-panel" class="view-panel"><div id="calendar" style="height: 100%;"></div></div>
+            </div>
+            
+            <div class="side-controls-wrapper">
+                <div class="side-controls">
+                    <button class="view-btn active-view" id="mapViewBtn">🗺️ 맵</button>
+                    <button class="view-btn" id="calViewBtn">📅 달력</button>
+                </div>
+                
+                <div class="side-controls" id="zoomControlBlock">
+                    <button class="view-btn" id="zoomInBtn">➕ 확대</button>
+                    <button class="view-btn" id="zoomOutBtn">➖ 축소</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid-container" id="gridContainer"></div>
+    </div>
+
+    <div class="modal-overlay" id="wishlistModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('wishlistModal').style.display='none'">&times;</span>
+            <h2 style="margin-top: 0; margin-bottom: 5px;">❤️ 찜한 팝업 리스트</h2>
+            <p style="color: #777; font-size: 14px; margin-top: 0; margin-bottom: 20px;">내가 가고 싶은 팝업스토어 목록입니다.</p>
+            <div id="wishlistContainer" style="display: flex; flex-direction: column;"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('detailModal').style.display='none'">&times;</span>
+            <h1 id="modalTitle" style="margin-top: 0; margin-bottom: 10px; word-break: keep-all;">팝업 이름</h1>
+            <p id="modalCat" style="font-weight:700; margin-top: 0;"></p>
+            <hr style="width:100%; border:0; border-top:1px solid #eee; margin: 20px 0;">
+            <p><strong>📍 위치:</strong> <span id="modalAddr"></span></p>
+            <p><strong>📅 기간:</strong> <span id="modalDate"></span></p>
+            <p><strong>📝 AI의 소개:</strong> <br><span id="modalDesc" style="color: #444; line-height: 1.6; display: block; margin-top: 8px; font-size: 15px;"></span></p>
+        </div>
+    </div>
+
+    <script>
+        var map = new kakao.maps.Map(document.getElementById('map'), { center: new kakao.maps.LatLng(37.5445, 127.0560), level: 6 }); 
+        var geocoder = new kakao.maps.services.Geocoder(); 
+        var markers = []; let currentData = []; let wishlist = []; let calendarInstance = null; let selectedCategory = '전체';
+
+        function getCategoryColor(category) {
+            if (!category) return '#7f8c8d';
+            if (category.includes('패션')) return '#0984e3';
+            if (category.includes('뷰티')) return '#e84393';
+            if (category.includes('캐릭터')) return '#f39c12';
+            if (category.includes('푸드')) return '#d63031';
+            if (category.includes('라이프')) return '#27ae60';
+            return '#7f8c8d';
+        }
+
+        function getMarkerImage(category) {
+            const color = getCategoryColor(category);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><path fill="${color}" d="M18 0C10.82 0 5 5.82 5 13c0 7.85 11.53 21.72 12.28 22.65.38.47 1.06.47 1.44 0C19.47 34.72 31 20.85 31 13c0-7.18-5.82-13-13-13z"/><circle fill="#fff" cx="18" cy="13" r="6"/></svg>`;
+            return new kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), new kakao.maps.Size(36, 36), {offset: new kakao.maps.Point(18, 36)});
+        }
+
+        document.getElementById('openWishlistBtn').onclick = () => {
+            renderWishlistModal();
+            document.getElementById('wishlistModal').style.display = 'flex';
+        };
+
+        function renderWishlistModal() {
+            const container = document.getElementById('wishlistContainer');
+            container.innerHTML = '';
+            
+            if (wishlist.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 40px; color:#999; background: #f8f9fa; border-radius: 8px;">아직 찜한 팝업스토어가 없습니다.</div>';
+                return;
+            }
+            
+            wishlist.forEach(popup => {
+                const item = document.createElement('div');
+                item.className = 'wishlist-item';
+                item.innerHTML = `
+                    <div class="wishlist-info">
+                        <span class="wishlist-title"><span style="color:${getCategoryColor(popup.category)}">[${popup.category}]</span> ${popup.name}</span>
+                        <span class="wishlist-date">${popup.start_date} ~ ${popup.end_date}</span>
+                    </div>
+                    <div class="wishlist-actions">
+                        <button class="btn-detail">상세보기</button>
+                        <button class="btn-remove">삭제</button>
+                    </div>
+                `;
+                
+                // 🔥 상세보기 클릭 시 찜 창은 닫지 않고, 겹쳐서 엽니다.
+                item.querySelector('.btn-detail').onclick = () => {
+                    openDetail(popup);
+                };
+                
+                item.querySelector('.btn-remove').onclick = () => {
+                    toggleWishlist(popup, null); 
+                    renderWishlistModal(); 
+                    renderUI(); 
+                };
+                
+                container.appendChild(item);
+            });
+        }
+
+        function renderUI() {
+            let targetDate = document.getElementById('datePicker').value;
+
+            renderCalendar(currentData);
+
+            let filteredData = currentData.filter(p => p.start_date <= targetDate && p.end_date >= targetDate);
+            if (selectedCategory !== '전체') {
+                filteredData = filteredData.filter(p => p.category && p.category.includes(selectedCategory));
+            }
+
+            markers.forEach(m => m.setMap(null)); markers = [];
+            const grid = document.getElementById('gridContainer');
+            grid.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                grid.innerHTML = `<div class="empty-state">해당 조건의 팝업스토어가 없습니다.</div>`;
+                return;
+            }
+
+            var bounds = new kakao.maps.LatLngBounds();
+
+            filteredData.forEach(popup => {
+                const catColor = getCategoryColor(popup.category);
+                const bgStyle = popup.image_url ? `background-image: url('${popup.image_url}')` : `background: linear-gradient(135deg, ${catColor}, #2c3e50);`;
+                
+                let isLiked = wishlist.some(item => item.id === popup.id);
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-bg" style="${bgStyle}"></div>
+                    <div class="card-actions">
+                        <div class="action-btn like-btn ${isLiked ? 'liked' : ''}">${isLiked ? '♥' : '♡'}</div>
+                    </div>
+                    <div class="card-content">
+                        <div style="color:${catColor}; font-weight:700; font-size:13px; margin-bottom: 4px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">[${popup.category || '미분류'}]</div>
+                        <div class="card-name">${popup.name}</div>
+                        <div class="card-addr">${popup.address}</div>
+                    </div>`;
+                
+                grid.appendChild(card);
+
+                if (popup.address) {
+                    geocoder.addressSearch(popup.address, function(result, status) {
+                        if (status === kakao.maps.services.Status.OK) {
+                            let pos = new kakao.maps.LatLng(result[0].y, result[0].x);
+                            let marker = new kakao.maps.Marker({ position: pos, map: map, image: getMarkerImage(popup.category) });
+                            
+                            kakao.maps.event.addListener(marker, 'click', () => { map.panTo(pos); openDetail(popup); });
+                            card.onclick = () => { map.panTo(pos); openDetail(popup); window.scrollTo({top: 100, behavior: 'smooth'}); };
+                            
+                            markers.push(marker);
+                            bounds.extend(pos);
+                            map.setBounds(bounds);
+                        } else {
+                            card.onclick = () => { openDetail(popup); };
+                        }
+                    });
+                } else {
+                    card.onclick = () => { openDetail(popup); };
+                }
+
+                card.querySelector('.like-btn').onclick = (e) => { 
+                    e.stopPropagation(); 
+                    toggleWishlist(popup, e.target); 
+                };
+            });
+        }
+
+        function renderCalendar(data) {
+            if(calendarInstance) calendarInstance.destroy();
+            calendarInstance = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                initialView: 'dayGridMonth',
+                initialDate: document.getElementById('datePicker').value,
+                events: data.map(p => {
+                    let endObj = new Date(p.end_date);
+                    endObj.setDate(endObj.getDate() + 1);
+                    let endStr = endObj.getFullYear() + '-' + String(endObj.getMonth() + 1).padStart(2, '0') + '-' + String(endObj.getDate()).padStart(2, '0');
+                    return { title: p.name, start: p.start_date, end: endStr, extendedProps: p, backgroundColor: getCategoryColor(p.category), borderColor: getCategoryColor(p.category) };
+                }),
+                eventClick: (info) => openDetail(info.event.extendedProps)
+            });
+            calendarInstance.render();
+        }
+
+        function toggleWishlist(popup, heartElement) {
+            const index = wishlist.findIndex(item => item.id === popup.id);
+            if (index > -1) { 
+                wishlist.splice(index, 1); 
+                if (heartElement) { heartElement.innerText = '♡'; heartElement.classList.remove('liked'); }
+            } else { 
+                wishlist.push(popup); 
+                if (heartElement) { heartElement.innerText = '♥'; heartElement.classList.add('liked'); }
+            }
+            document.getElementById('wishCount').innerText = wishlist.length;
+        }
+
+        function openDetail(popup) {
+            document.getElementById('modalTitle').innerText = popup.name;
+            document.getElementById('modalCat').innerText = `#${popup.category || '미분류'}`;
+            document.getElementById('modalCat').style.color = getCategoryColor(popup.category);
+            document.getElementById('modalAddr').innerText = popup.address;
+            document.getElementById('modalDesc').innerText = popup.description || "소개글이 없습니다.";
+            document.getElementById('modalDate').innerText = `${popup.start_date} ~ ${popup.end_date}`;
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        // 🔥 지도/달력 전환 (달력일 때는 확대/축소 버튼을 숨깁니다)
+        document.getElementById('mapViewBtn').onclick = () => { 
+            document.getElementById('calendar-panel').classList.remove('active');
+            document.getElementById('map-panel').classList.add('active');
+            document.getElementById('zoomControlBlock').style.display = 'flex'; // 줌 버튼 표시
+            
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active-view'));
+            document.getElementById('mapViewBtn').classList.add('active-view');
+            setTimeout(()=>map.relayout(), 100);
+        };
+        
+        document.getElementById('calViewBtn').onclick = () => { 
+            document.getElementById('map-panel').classList.remove('active');
+            document.getElementById('calendar-panel').classList.add('active');
+            document.getElementById('zoomControlBlock').style.display = 'none'; // 줌 버튼 숨김
+            
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active-view'));
+            document.getElementById('calViewBtn').classList.add('active-view');
+            setTimeout(()=>calendarInstance.render(), 100);
+        };
+
+        // 🔥 지도 확대/축소 로직 연결
+        document.getElementById('zoomInBtn').onclick = () => {
+            map.setLevel(map.getLevel() - 1);
+        };
+        document.getElementById('zoomOutBtn').onclick = () => {
+            map.setLevel(map.getLevel() + 1);
+        };
+
+        document.getElementById('datePicker').onchange = async (e) => {
+            const res = await fetch(`/api/popups?target_date=${e.target.value}`);
+            const result = await res.json();
+            currentData = result.data;
+            renderUI();
+        };
+
+        document.querySelectorAll('.tag-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                selectedCategory = e.target.dataset.cat;
+                renderUI();
+            };
+        });
+
+        async function initPage() {
+            const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+            document.getElementById('datePicker').value = todayStr;
+            
+            try {
+                const res = await fetch(`/api/popups?target_date=${todayStr}`);
+                const result = await res.json();
+                currentData = result.data || [];
+                renderUI();
+            } catch(e) { console.error("Data load failed:", e); }
+        }
+
+        initPage();
+    </script>
+</body>
+</html>
