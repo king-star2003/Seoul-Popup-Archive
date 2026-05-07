@@ -8,6 +8,7 @@ from google import genai
 import time
 import os
 from dotenv import load_dotenv
+import subprocess
 
 # 비밀 금고 열기
 load_dotenv()
@@ -106,6 +107,33 @@ def save_to_db(data):
     finally:
         conn.close()
 
+def auto_git_push():
+    print("\n" + "="*50)
+    print("🚀 깃허브 자동 업로드를 시작합니다...")
+    
+    try:
+        # 1. 포장하기 (git add .)
+        subprocess.run(["git", "add", "."], check=True)
+        
+        # 2. 이름표 붙이기 (git commit)
+        # (주의: 변경된 데이터가 없으면 에러가 날 수 있어서 부드럽게 넘어가도록 설정)
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", "🤖 팝업 데이터 자동 업데이트"], 
+            capture_output=True, text=True
+        )
+        
+        if "nothing to commit" in commit_result.stdout:
+            print("🤷‍♂️ 새롭게 추가된 데이터가 없어서 업로드를 건너뜁니다.")
+            return
+
+        # 3. 쏘아 올리기 (git push)
+        print("⏳ 깃허브로 데이터 전송 중...")
+        subprocess.run(["git", "push"], check=True)
+        print("✅ 깃허브 자동 업로드 성공! 곧 웹사이트가 업데이트됩니다.")
+        
+    except Exception as e:
+        print(f"❌ 깃허브 자동 업로드 실패: {e}")
+
 if __name__ == '__main__':
     # 💡 수정: "올해 이번 달"을 검색어에 넣어 무조건 최신 정보만 찾도록 유도
     current_ym = datetime.now().strftime('%Y년 %m월')
@@ -121,3 +149,5 @@ if __name__ == '__main__':
         if info:
             save_to_db(info)
         time.sleep(5) # 속도 조절
+
+    auto_git_push()
