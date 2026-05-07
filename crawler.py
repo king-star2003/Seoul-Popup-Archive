@@ -142,7 +142,7 @@ if __name__ == '__main__':
     print("="*50)
     print(f"🔍 '{smart_query}' 관련 공식/웹 데이터를 수집합니다!")
     
-    posts = search_naver_web(smart_query, 5)
+    posts = search_naver_web(smart_query, 10)
     for post in posts:
         content = f"제목: {post['title']}\n요약: {post['description']}"
         info = extract_info_with_ai(content)
