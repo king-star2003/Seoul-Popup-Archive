@@ -137,7 +137,7 @@ def auto_git_push():
 if __name__ == '__main__':
     # 💡 수정: "올해 이번 달"을 검색어에 넣어 무조건 최신 정보만 찾도록 유도
     current_ym = datetime.now().strftime('%Y년 %m월')
-    smart_query = f"{current_ym} 전국 팝업스토어" 
+    smart_query = f"{current_ym} 팝업스토어" 
     
     print("="*50)
     print(f"🔍 '{smart_query}' 관련 공식/웹 데이터를 수집합니다!")
