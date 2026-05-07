@@ -118,8 +118,8 @@ def auto_git_push():
         # 2. 이름표 붙이기 (git commit)
         # (주의: 변경된 데이터가 없으면 에러가 날 수 있어서 부드럽게 넘어가도록 설정)
         commit_result = subprocess.run(
-            ["git", "commit", "-m", "🤖 팝업 데이터 자동 업데이트"], 
-            capture_output=True, text=True
+            ["git", "commit", "-m", " 팝업 데이터 자동 업데이트"], 
+            capture_output=True, text=True, encoding='utf-8'    
         )
         
         if "nothing to commit" in commit_result.stdout:
